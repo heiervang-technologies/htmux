@@ -1,17 +1,17 @@
 # Obvious program stuff.
-bin_PROGRAMS = tmux
-CLEANFILES = tmux.1.mdoc tmux.1.man cmd-parse.c
+bin_PROGRAMS = htmux
+CLEANFILES = htmux.1.mdoc htmux.1.man cmd-parse.c
 
 # Distribution tarball options.
 EXTRA_DIST = \
 	CHANGES README README.ja COPYING example_tmux.conf \
-	osdep-*.c mdoc2man.awk tmux.1
-dist_EXTRA_tmux_SOURCES = compat/*.[ch]
+	osdep-*.c mdoc2man.awk htmux.1
+dist_EXTRA_htmux_SOURCES = compat/*.[ch]
 
 # Preprocessor flags.
 AM_CPPFLAGS += @XOPEN_DEFINES@ \
 	-DTMUX_VERSION='"@VERSION@"' \
-	-DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"' \
+	-DTMUX_CONF='"$(sysconfdir)/htmux.conf:~/.htmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/htmux/htmux.conf:~/.config/htmux/htmux.conf"' \
 	-DTMUX_LOCK_CMD='"@DEFAULT_LOCK_CMD@"' \
 	-DTMUX_TERM='"@DEFAULT_TERM@"'
 
@@ -78,7 +78,7 @@ AM_CPPFLAGS += -DTMUX_SOCK_PERM=0
 endif
 
 # List of sources.
-dist_tmux_SOURCES = \
+dist_htmux_SOURCES = \
 	alerts.c \
 	arguments.c \
 	attributes.c \
@@ -214,43 +214,43 @@ dist_tmux_SOURCES = \
 	window.c \
 	xmalloc.c \
 	xmalloc.h
-nodist_tmux_SOURCES = osdep-@PLATFORM@.c
+nodist_htmux_SOURCES = osdep-@PLATFORM@.c
 
 # Add compat file for forkpty.
 if NEED_FORKPTY
-nodist_tmux_SOURCES += compat/forkpty-@PLATFORM@.c
+nodist_htmux_SOURCES += compat/forkpty-@PLATFORM@.c
 endif
 
 # Add compat file for systemd.
 if HAVE_SYSTEMD
-nodist_tmux_SOURCES += compat/systemd.c
+nodist_htmux_SOURCES += compat/systemd.c
 endif
 
 # Add compat file for utf8proc.
 if HAVE_UTF8PROC
-nodist_tmux_SOURCES += compat/utf8proc.c
+nodist_htmux_SOURCES += compat/utf8proc.c
 endif
 
 # Enable sixel support.
 if ENABLE_SIXEL
-dist_tmux_SOURCES += image.c image-sixel.c
+dist_htmux_SOURCES += image.c image-sixel.c
 endif
 
 if NEED_FUZZING
 check_PROGRAMS = fuzz/input-fuzzer
 fuzz_input_fuzzer_LDFLAGS = $(FUZZING_LIBS)
-fuzz_input_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
+fuzz_input_fuzzer_LDADD = $(LDADD) $(htmux_OBJECTS)
 endif
 
-# Install tmux.1 in the right format.
+# Install htmux.1 in the right format.
 install-exec-hook:
 	if test x@MANFORMAT@ = xmdoc; then \
-		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/tmux.1 \
-			>$(srcdir)/tmux.1.mdoc; \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/htmux.1 \
+			>$(srcdir)/htmux.1.mdoc; \
 	else \
-		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/tmux.1| \
-			$(AWK) -f $(srcdir)/mdoc2man.awk >$(srcdir)/tmux.1.man; \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/htmux.1| \
+			$(AWK) -f $(srcdir)/mdoc2man.awk >$(srcdir)/htmux.1.man; \
 	fi
 	$(mkdir_p) $(DESTDIR)$(mandir)/man1
-	$(INSTALL_DATA) $(srcdir)/tmux.1.@MANFORMAT@ \
-		$(DESTDIR)$(mandir)/man1/tmux.1
+	$(INSTALL_DATA) $(srcdir)/htmux.1.@MANFORMAT@ \
+		$(DESTDIR)$(mandir)/man1/htmux.1

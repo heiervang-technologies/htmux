@@ -33,9 +33,9 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	.name = "paste-buffer",
 	.alias = "pasteb",
 
-	.args = { "db:prSs:t:", 0, 0, NULL },
-	.usage = "[-dprS] [-s separator] " CMD_BUFFER_USAGE " "
-		 CMD_TARGET_PANE_USAGE,
+	.args = { "db:E:prSs:t:", 0, 0, NULL },
+	.usage = "[-dprS] [-E enter-count] [-s separator] "
+		 CMD_BUFFER_USAGE " " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -54,6 +54,46 @@ cmd_paste_buffer_paste(struct window_pane *wp, const char *buf, size_t len)
 	free(cp);
 }
 
+/*
+ * Timer callback: fire Enter after paste idle or max timeout.
+ */
+static void
+cmd_paste_buffer_enter_fire(int fd, short events, void *arg)
+{
+	struct window_pane	*wp = arg;
+
+	/* Cancel the other timer. */
+	evtimer_del(&wp->paste_idle_timer);
+	evtimer_del(&wp->paste_max_timer);
+
+	/* Clear the pending flag. */
+	wp->flags &= ~PANE_PASTE_PENDING;
+
+	/* Send carriage return. */
+	if (wp->fd != -1 && wp->event != NULL)
+		bufferevent_write(wp->event, "\r", 1);
+	wp->paste_enter_count--;
+
+	log_debug("paste-enter: fired enter for %%%u, %d remaining",
+	    wp->id, wp->paste_enter_count);
+
+	/* More enters to send? Schedule with 50ms spacing. */
+	if (wp->paste_enter_count > 0) {
+		struct timeval tv = { 0, 50000 }; /* 50ms */
+		wp->flags |= PANE_PASTE_PENDING;
+		evtimer_set(&wp->paste_max_timer,
+		    cmd_paste_buffer_enter_fire, wp);
+		evtimer_add(&wp->paste_max_timer, &tv);
+		return;
+	}
+
+	/* All enters sent. Resume the client command queue. */
+	if (wp->paste_enter_item != NULL) {
+		cmdq_continue(wp->paste_enter_item);
+		wp->paste_enter_item = NULL;
+	}
+}
+
 static enum cmd_retval
 cmd_paste_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -64,10 +104,26 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*sepstr, *bufname, *bufdata, *bufend, *line;
 	size_t			 seplen, bufsize, len;
 	int			 bracket = args_has(args, 'p');
+	int			 enter = args_has(args, 'E');
+	int			 enter_count = 1;
 
 	if (window_pane_exited(wp)) {
 		cmdq_error(item, "target pane has exited");
 		return (CMD_RETURN_ERROR);
+	}
+
+	/* Parse -E count (default 1). */
+	if (enter) {
+		const char *estr = args_get(args, 'E');
+		if (estr != NULL) {
+			const char *errstr;
+			enter_count = strtonum(estr, 1, 10, &errstr);
+			if (errstr != NULL) {
+				cmdq_error(item, "enter count %s: %s",
+				    estr, errstr);
+				return (CMD_RETURN_ERROR);
+			}
+		}
 	}
 
 	bufname = NULL;
@@ -127,6 +183,37 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (pb != NULL && args_has(args, 'd'))
 		paste_free(pb);
+
+	/* If -E, set up deferred enter with adaptive timing. */
+	if (enter && pb != NULL) {
+		struct timeval max_tv;
+		long long max_ms;
+
+		/* Get configurable timeouts. */
+		max_ms = options_get_number(wp->options,
+		    "paste-enter-timeout");
+		max_tv.tv_sec = max_ms / 1000;
+		max_tv.tv_usec = (max_ms % 1000) * 1000;
+
+		/* Store state on the pane. */
+		wp->paste_enter_count = enter_count;
+		wp->paste_enter_item = item;
+		wp->flags |= PANE_PASTE_PENDING;
+
+		/* Initialize and start the idle timer (reset by read cb). */
+		evtimer_set(&wp->paste_idle_timer,
+		    cmd_paste_buffer_enter_fire, wp);
+
+		/* Start the hard max timeout. */
+		evtimer_set(&wp->paste_max_timer,
+		    cmd_paste_buffer_enter_fire, wp);
+		evtimer_add(&wp->paste_max_timer, &max_tv);
+
+		log_debug("paste-enter: started for %%%u, max %lldms, "
+		    "count %d", wp->id, max_ms, enter_count);
+
+		return (CMD_RETURN_WAIT);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }

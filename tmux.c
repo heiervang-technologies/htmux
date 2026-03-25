@@ -206,7 +206,7 @@ make_label(const char *label, char **cause)
 		free(paths[i]);
 	free(paths);
 
-	xasprintf(&base, "%s/tmux-%ld", path, (long)uid);
+	xasprintf(&base, "%s/htmux-%ld", path, (long)uid);
 	free(path);
 	if (mkdir(base, S_IRWXU) != 0 && errno != EEXIST) {
 		xasprintf(cause, "couldn't create directory %s (%s)", base,
@@ -411,7 +411,7 @@ main(int argc, char **argv)
 		case 'h':
 			usage(0);
 		case 'V':
-			printf("tmux %s\n", getversion());
+			printf("htmux %s\n", getversion());
 			exit(0);
 		case 'l':
 			flags |= CLIENT_LOGIN;
