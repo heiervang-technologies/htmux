@@ -80,7 +80,8 @@ cmd_paste_buffer_enter_fire(int fd, short events, void *arg)
 	/* More enters to send? Schedule with 50ms spacing. */
 	if (wp->paste_enter_count > 0) {
 		struct timeval tv = { 0, 50000 }; /* 50ms */
-		wp->flags |= PANE_PASTE_PENDING;
+		/* Don't re-set PANE_PASTE_PENDING: subsequent enters are
+		 * fixed-delay, not adaptive. Avoids idle timer interference. */
 		evtimer_set(&wp->paste_max_timer,
 		    cmd_paste_buffer_enter_fire, wp);
 		evtimer_add(&wp->paste_max_timer, &tv);
@@ -109,6 +110,11 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (window_pane_exited(wp)) {
 		cmdq_error(item, "target pane has exited");
+		return (CMD_RETURN_ERROR);
+	}
+
+	if (enter && (wp->flags & PANE_PASTE_PENDING)) {
+		cmdq_error(item, "paste already pending on this pane");
 		return (CMD_RETURN_ERROR);
 	}
 
