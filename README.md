@@ -1,4 +1,4 @@
-# ht-tmux
+# htmux
 
 _[Heiervang Technologies](https://github.com/heiervang-technologies) fork of [tmux](https://github.com/tmux/tmux)_
 
