@@ -1006,6 +1006,17 @@ window_pane_destroy(struct window_pane *wp)
 		event_del(&wp->resize_timer);
 	if (event_initialized(&wp->sync_timer))
 		event_del(&wp->sync_timer);
+
+	/* Clean up paste-enter timers to prevent use-after-free. */
+	if (wp->flags & PANE_PASTE_PENDING) {
+		evtimer_del(&wp->paste_idle_timer);
+		evtimer_del(&wp->paste_max_timer);
+		wp->flags &= ~PANE_PASTE_PENDING;
+		if (wp->paste_enter_item != NULL) {
+			cmdq_continue(wp->paste_enter_item);
+			wp->paste_enter_item = NULL;
+		}
+	}
 	TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
 		TAILQ_REMOVE(&wp->resize_queue, r, entry);
 		free(r);
