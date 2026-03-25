@@ -1047,6 +1047,26 @@ window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 	}
 	input_parse_pane(wp);
 	bufferevent_disable(wp->event, EV_READ);
+
+	/*
+	 * Paste-enter adaptive timing: if a paste-buffer -E is pending,
+	 * reset the idle timer each time the pane produces output.
+	 * This detects when the app finishes processing the paste.
+	 */
+	if (wp->flags & PANE_PASTE_PENDING) {
+		struct timeval idle_tv;
+		long long idle_ms;
+
+		idle_ms = options_get_number(wp->options,
+		    "paste-enter-idle");
+		idle_tv.tv_sec = 0;
+		idle_tv.tv_usec = idle_ms * 1000;
+
+		evtimer_del(&wp->paste_idle_timer);
+		evtimer_add(&wp->paste_idle_timer, &idle_tv);
+		log_debug("paste-enter: reset idle timer for %%%u (%lldms)",
+		    wp->id, idle_ms);
+	}
 }
 
 static void

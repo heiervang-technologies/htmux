@@ -1424,6 +1424,26 @@ const struct options_table_entry options_table[] = {
 		  "remain-on-exit is enabled."
 	},
 
+	{ .name = "paste-enter-idle",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .minimum = 10,
+	  .maximum = 5000,
+	  .default_num = 50,
+	  .text = "Idle threshold in milliseconds for paste-buffer -E. "
+		  "Enter fires after the pane has been quiet for this long."
+	},
+
+	{ .name = "paste-enter-timeout",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .minimum = 100,
+	  .maximum = 30000,
+	  .default_num = 2000,
+	  .text = "Maximum wait in milliseconds for paste-buffer -E. "
+		  "Enter fires after this even if the pane is still active."
+	},
+
 	{ .name = "scroll-on-clear",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,

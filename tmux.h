@@ -1214,6 +1214,13 @@ struct window_pane {
 #define PANE_THEMECHANGED 0x2000
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
+#define PANE_PASTE_PENDING 0x10000
+
+	/* Paste-enter timer state (paste-buffer -E). */
+	struct event	 paste_idle_timer;
+	struct event	 paste_max_timer;
+	struct cmdq_item *paste_enter_item;
+	int		 paste_enter_count;
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
