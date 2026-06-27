@@ -1,6 +1,6 @@
 # Obvious program stuff.
 bin_PROGRAMS = htmux
-CLEANFILES = htmux.1.mdoc htmux.1.man cmd-parse.c
+CLEANFILES = htmux.1 htmux.1.mdoc htmux.1.man cmd-parse.c
 
 # Distribution tarball options.
 EXTRA_DIST = \
@@ -243,7 +243,10 @@ fuzz_input_fuzzer_LDADD = $(LDADD) $(htmux_OBJECTS)
 endif
 
 # Install htmux.1 in the right format.
-install-exec-hook:
+htmux.1: tmux.1
+	cp $(srcdir)/tmux.1 $@
+
+install-exec-hook: htmux.1
 	if test x@MANFORMAT@ = xmdoc; then \
 		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/htmux.1 \
 			>$(srcdir)/htmux.1.mdoc; \
